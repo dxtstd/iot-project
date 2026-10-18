@@ -1,0 +1,116 @@
+#include <Arduino.h>
+#include <Preferences.h>
+
+constexpr uint8_t PH_PIN = 34;
+constexpr uint16_t SAMPLE_COUNT = 100;
+constexpr float ADC_REFERENCE_VOLTAGE = 3.3f;
+constexpr int ADC_MAX_VALUE = 4095;
+
+Preferences preferences;
+float ph7Voltage = NAN;
+float ph4Voltage = NAN;
+
+float rawToVoltage(uint16_t rawValue) {
+  return static_cast<float>(rawValue) * ADC_REFERENCE_VOLTAGE / ADC_MAX_VALUE;
+}
+
+float readAverageVoltage(uint8_t pin) {
+  uint32_t total = 0;
+
+  for (uint16_t sample = 0; sample < SAMPLE_COUNT; ++sample) {
+    total += analogRead(pin);
+    delay(10);
+  }
+
+  const float averageRaw = static_cast<float>(total) / SAMPLE_COUNT;
+  return rawToVoltage(static_cast<uint16_t>(averageRaw));
+}
+
+void printCalibration() {
+  if (isnan(ph7Voltage) || isnan(ph4Voltage)) {
+    Serial.println("Calibration is incomplete.");
+    return;
+  }
+
+  const float slope = (4.0f - 7.0f) / (ph4Voltage - ph7Voltage);
+  const float intercept = 7.0f - slope * ph7Voltage;
+
+  Serial.printf("pH 7 voltage: %.3f V\n", ph7Voltage);
+  Serial.printf("pH 4 voltage: %.3f V\n", ph4Voltage);
+  Serial.printf("Formula: pH = %.4f * voltage + %.4f\n", slope, intercept);
+}
+
+void saveCalibration() {
+  preferences.begin("ph-calibration", false);
+  preferences.putFloat("ph7Voltage", ph7Voltage);
+  preferences.putFloat("ph4Voltage", ph4Voltage);
+  preferences.end();
+}
+
+void loadCalibration() {
+  preferences.begin("ph-calibration", true);
+  ph7Voltage = preferences.getFloat("ph7Voltage", NAN);
+  ph4Voltage = preferences.getFloat("ph4Voltage", NAN);
+  preferences.end();
+}
+
+void capturePoint(float targetPh) {
+  Serial.printf(
+      "\nPlace the probe in pH %.2f buffer, wait for a stable reading, then send 'y'.\n",
+      targetPh);
+
+  while (Serial.read() != -1) {
+  }
+
+  while (true) {
+    if (Serial.available() && Serial.read() == 'y') {
+      const float voltage = readAverageVoltage(PH_PIN);
+
+      if (targetPh == 7.0f) {
+        ph7Voltage = voltage;
+      } else {
+        ph4Voltage = voltage;
+      }
+
+      Serial.printf("Captured pH %.2f at %.3f V.\n", targetPh, voltage);
+      return;
+    }
+    delay(10);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  analogReadResolution(12);
+  analogSetPinAttenuation(PH_PIN, ADC_11db);
+  loadCalibration();
+
+  Serial.println("\nPH-4502C two-point calibration");
+  Serial.println("Commands: 7 = capture pH 7, 4 = capture pH 4, s = save, r = show");
+  printCalibration();
+}
+
+void loop() {
+  if (!Serial.available()) {
+    delay(10);
+    return;
+  }
+
+  const char command = Serial.read();
+
+  if (command == '7') {
+    capturePoint(7.0f);
+  } else if (command == '4') {
+    capturePoint(4.0f);
+  } else if (command == 's') {
+    if (isnan(ph7Voltage) || isnan(ph4Voltage)) {
+      Serial.println("Capture both pH 7 and pH 4 before saving.");
+    } else {
+      saveCalibration();
+      Serial.println("Calibration saved.");
+      printCalibration();
+    }
+  } else if (command == 'r') {
+    printCalibration();
+  }
+}
