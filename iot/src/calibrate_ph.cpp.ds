@@ -3,8 +3,8 @@
 
 constexpr uint8_t PH_PIN = 34;
 constexpr uint16_t SAMPLE_COUNT = 100;
-constexpr float ADC_REFERENCE_VOLTAGE = 3.3f;
-constexpr int ADC_MAX_VALUE = 4095;
+constexpr float ADC_REFERENCE_VOLTAGE = 5.0f;
+constexpr int ADC_MAX_VALUE = 1023;
 
 Preferences preferences;
 float ph7Voltage = NAN;
