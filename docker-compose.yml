@@ -1,0 +1,51 @@
+services:
+  nginx:
+    build:
+      context: ./website/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./website/backend
+      dockerfile: Dockerfile
+    environment:
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-change-this-development-secret}
+      POUCHDB_PATH: /app/data/lobster-farm-monitor
+      SENSOR_MODE: ${SENSOR_MODE:-dummy}
+      MQTT_URL: ${MQTT_URL:-mqtt://mqtt:1883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-lobster-farm/sensors}
+      MQTT_USERNAME: ${MQTT_USERNAME:-}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    volumes:
+      - pouchdb_data:/app/data
+    depends_on:
+      mqtt:
+        condition: service_started
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    restart: unless-stopped
+
+volumes:
+  pouchdb_data:
+  mqtt_data:
+  mqtt_log:

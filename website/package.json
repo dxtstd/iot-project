@@ -1,0 +1,18 @@
+{
+  "name": "lobster-farm-monitor",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "nx run-many --target=dev --projects=backend,frontend --parallel=2",
+    "build": "nx run-many --target=build --projects=backend,frontend --parallel=2",
+    "lint": "nx run frontend:lint",
+    "backend": "nx run backend:dev",
+    "frontend": "nx run frontend:dev"
+  },
+  "devDependencies": {
+    "nx": "^22.0.0"
+  }
+}

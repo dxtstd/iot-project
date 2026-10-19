@@ -1,0 +1,28 @@
+{
+  "name": "backend",
+  "sourceRoot": "backend/src",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx watch src/server.ts",
+        "cwd": "backend"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx src/server.ts",
+        "cwd": "backend"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --project tsconfig.json --outDir dist",
+        "cwd": "backend"
+      }
+    }
+  }
+}

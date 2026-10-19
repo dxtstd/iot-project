@@ -6,6 +6,14 @@
 		{
 			"name": "iot",
 			"path": "iot"
+		},
+		{
+			"name": "website",
+			"path": "website"
+		},
+		{
+			"name": "testing",
+			"path": "testing"
 		}
 	],
 	"settings": {}

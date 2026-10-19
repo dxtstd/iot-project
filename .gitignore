@@ -5,6 +5,9 @@ dist/
 build/
 *.lock
 
+# NX Workspace
+.nx/
+
 # PlatformIO
 iot/.pio/
 iot/.vscode/

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 constexpr uint8_t PO_PIN = 34;
-constexpr float ADC_REFERENCE_VOLTAGE = 5.0f;
+constexpr float ADC_REFERENCE_VOLTAGE = 3.3f;
 constexpr int ADC_MAX_VALUE = 4095;
 
 void setup() {
