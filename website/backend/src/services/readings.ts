@@ -31,3 +31,22 @@ export async function saveSensorReading(input: SensorReadingInput) {
   }
   return reading
 }
+
+export async function resetSensorReadings() {
+  const result = await database.allDocs({ include_docs: true, limit: 50000 })
+  const readings = result.rows
+    .map((row) => row.doc as ReadingDoc | undefined)
+    .filter((doc): doc is ReadingDoc => doc?.type === 'reading')
+  if (readings.length > 0) await database.bulkDocs(readings.map((reading) => ({ ...reading, _deleted: true })))
+
+  const resetReading: ReadingDoc = {
+    _id: `reading:${Date.now()}`,
+    type: 'reading',
+    timestamp: new Date().toISOString(),
+    temperature: 0,
+    turbidity: 0,
+    ph: 0,
+  }
+  await database.put(resetReading)
+  return resetReading
+}

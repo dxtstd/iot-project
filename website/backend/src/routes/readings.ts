@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { database } from '../database.js'
-import { saveSensorReading } from '../services/readings.js'
+import { resetSensorReadings, saveSensorReading } from '../services/readings.js'
 import type { DatabaseDoc, ReadingDoc } from '../types.js'
 
 export const readingsRouter = Router()
@@ -95,4 +95,8 @@ readingsRouter.post('/', async (request, response) => {
     }
     throw error
   }
+})
+
+readingsRouter.delete('/reset', async (_request, response) => {
+  return response.json(await resetSensorReadings())
 })

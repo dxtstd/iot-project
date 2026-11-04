@@ -23,6 +23,13 @@ export type DeviceStatus = {
   ageSeconds: number | null
 }
 
+export type FeedingSchedule = {
+  _id: string
+  time: string
+  enabled: boolean
+  timezone: 'Asia/Singapore'
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api'
 
 const sampleReadings: SensorReading[] = [
@@ -58,9 +65,10 @@ function App() {
   const [readingHours, setReadingHours] = useState(168)
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>({ connected: false, lastSeen: null, ageSeconds: null })
   const [notifications, setNotifications] = useState<NotificationSettings>({ enabled: false, chatId: '' })
+  const [feedingSchedules, setFeedingSchedules] = useState<FeedingSchedule[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [saving, setSaving] = useState(false)
-  const latest = readings[readings.length - 1]
+  const latest = latestReading
 
   useEffect(() => {
     if (!token) return
@@ -76,6 +84,8 @@ function App() {
 
         const settingsResponse = await fetch(`${API_URL}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
         if (settingsResponse.ok) setNotifications(await settingsResponse.json())
+        const schedulesResponse = await fetch(`${API_URL}/feeding-schedules`, { headers: { Authorization: `Bearer ${token}` } })
+        if (schedulesResponse.ok) setFeedingSchedules(await schedulesResponse.json())
         setCheckingToken(false)
       } catch {
         setCheckingToken(false)
@@ -158,9 +168,56 @@ function App() {
     setReadings(await response.json())
   }
 
+  async function resetReadings() {
+    if (!token) return
+    const response = await fetch(`${API_URL}/readings/reset`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Gagal mereset data sensor')
+    const resetReading = await response.json() as SensorReading
+    setReadings([resetReading])
+    setLatestReading(resetReading)
+  }
+
+  async function addFeedingSchedule(time: string) {
+    if (!token) return
+    const response = await fetch(`${API_URL}/feeding-schedules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ time, enabled: true }),
+    })
+    if (!response.ok) throw new Error((await response.json() as { error?: string }).error ?? 'Gagal menambahkan jadwal')
+    const created = await response.json() as FeedingSchedule
+    setFeedingSchedules((current) => [...current, created].sort((a, b) => a.time.localeCompare(b.time)))
+  }
+
+  async function updateFeedingSchedule(schedule: FeedingSchedule) {
+    if (!token) return
+    const response = await fetch(`${API_URL}/feeding-schedules/${encodeURIComponent(schedule._id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ time: schedule.time, enabled: schedule.enabled }),
+    })
+    if (!response.ok) throw new Error((await response.json() as { error?: string }).error ?? 'Gagal mengubah jadwal')
+    const updated = await response.json() as FeedingSchedule
+    setFeedingSchedules((current) => current.map((item) => item._id === updated._id ? updated : item).sort((a, b) => a.time.localeCompare(b.time)))
+  }
+
+  async function deleteFeedingSchedule(id: string) {
+    if (!token) return
+    const response = await fetch(`${API_URL}/feeding-schedules/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error('Gagal menghapus jadwal')
+    setFeedingSchedules((current) => current.filter((item) => item._id !== id))
+  }
+
   const dashboardProps = {
     readings,
     notifications,
+    feedingSchedules,
     status,
     saving,
     showSettings,
@@ -170,6 +227,10 @@ function App() {
     onReadingsChange: setReadings,
     latestReading,
     onTimeRangeChange: changeTimeRange,
+    onResetReadings: resetReadings,
+    onAddFeedingSchedule: addFeedingSchedule,
+    onUpdateFeedingSchedule: updateFeedingSchedule,
+    onDeleteFeedingSchedule: deleteFeedingSchedule,
     deviceStatus,
     onLogout: () => {
       localStorage.removeItem('iot-token')

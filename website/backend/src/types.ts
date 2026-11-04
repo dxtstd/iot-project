@@ -23,5 +23,14 @@ export type SettingsDoc = {
   chatId: string
 }
 
-export type DatabaseDoc = UserDoc | ReadingDoc | SettingsDoc
+export type FeedingScheduleDoc = {
+  _id: string
+  type: 'feeding-schedule'
+  time: string
+  enabled: boolean
+  timezone: 'Asia/Singapore'
+  createdAt: string
+}
+
+export type DatabaseDoc = UserDoc | ReadingDoc | SettingsDoc | FeedingScheduleDoc
 export type AuthRequest = Request & { userUsername?: string }

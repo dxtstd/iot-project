@@ -6,6 +6,7 @@ import { authenticate } from './middleware/authenticate.js'
 import { authRouter } from './routes/auth.js'
 import { notificationsRouter } from './routes/notifications.js'
 import { readingsRouter } from './routes/readings.js'
+import { feedingSchedulesRouter } from './routes/feedingSchedules.js'
 import { ensureSeedData } from './services/seed.js'
 import { startMqttSensorListener } from './services/mqtt.js'
 
@@ -15,6 +16,7 @@ app.use(express.json())
 
 app.use('/api/auth', authRouter)
 app.use('/api/readings', authenticate, readingsRouter)
+app.use('/api/feeding-schedules', authenticate, feedingSchedulesRouter)
 app.use('/api/notifications', authenticate, notificationsRouter)
 
 app.use((error: Error, _request: Request, response: Response, _next: NextFunction) => {
