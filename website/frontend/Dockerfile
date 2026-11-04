@@ -2,7 +2,8 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --include=dev
+ENV NODE_ENV=development
+RUN npm ci --include=dev && test -x node_modules/.bin/tsc
 
 COPY . .
 ARG VITE_API_URL=/api
