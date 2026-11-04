@@ -11,3 +11,5 @@ build/
 # PlatformIO
 iot/.pio/
 iot/.vscode/
+iot/include/secrets.h
+docker/mosquitto.password

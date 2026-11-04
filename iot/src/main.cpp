@@ -1,14 +1,22 @@
 #include <Arduino.h>
 #include <DallasTemperature.h>
+#include <PubSubClient.h>
 #include <OneWire.h>
+#include <WiFi.h>
+
+#include "secrets.h"
 
 // --- Pinout ESP32 (Gunakan Pin ADC1 Input-Only) ---
 constexpr uint8_t PH_PIN = 34;
 constexpr uint8_t TURB_PIN = 35;
 constexpr uint8_t DS18B20_PIN = 27;
+constexpr unsigned long MQTT_INTERVAL_MS = 30000;
 
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature temperatureSensor(&oneWire);
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
+unsigned long lastPublishAt = 0;
 
 // --- Spesifikasi ADC & Filter ---
 constexpr float ADC_REF_VOLTAGE = 3.3f;
@@ -16,8 +24,8 @@ constexpr int ADC_MAX_RESOLUTION = 4095;
 constexpr int TOTAL_SAMPLES = 50; // Oversampling peredam noise
 
 // --- Data Kalibrasi pH (Dibaca langsung dari Pin ADC ESP32) ---
-constexpr float V_PH7 = 1.44f; //[cite: 6]
-constexpr float V_PH4 = 1.72f; //[cite: 3]
+constexpr float V_PH7 = 1.465f; //[cite: 6]
+constexpr float V_PH4 = 1.76f; //[cite: 3]
 constexpr float PH_SENSITIVITY = (V_PH4 - V_PH7) / (7.0f - 4.0f); // 0.0933 V/pH
 
 // --- Data Kalibrasi Turbidity ---
@@ -55,6 +63,34 @@ float calculateNTU(float sensorVoltage) {
   return ((V_JERNIH_SENSOR - sensorVoltage) / (V_JERNIH_SENSOR - V_KERUH_SENSOR)) * 3000.0f;
 }
 
+void connectWiFi() {
+  Serial.print("Connecting to Wi-Fi");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.print("Wi-Fi connected, IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void connectMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("Connecting to MQTT...");
+    if (mqttClient.connect("esp32-sensor", MQTT_USERNAME, MQTT_PASSWORD)) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, state=");
+      Serial.print(mqttClient.state());
+      Serial.println(", retrying in 5 seconds");
+      delay(5000);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -67,10 +103,29 @@ void setup() {
   pinMode(TURB_PIN, INPUT);
   temperatureSensor.begin();
 
-  Serial.println("--- Triple Sensor System (pH, Turbidity & Temperature) Ready ---");
+  mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  connectWiFi();
+  connectMQTT();
+
+  Serial.println("--- Triple Sensor System with MQTT Ready ---");
 }
 
 void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    connectWiFi();
+  }
+
+  if (!mqttClient.connected()) {
+    connectMQTT();
+  }
+  mqttClient.loop();
+
+  if (lastPublishAt != 0 &&
+      millis() - lastPublishAt < MQTT_INTERVAL_MS) {
+    delay(100);
+    return;
+  }
+
   // 1. Pembacaan Sensor pH
   float phAdcVoltage = readStableADC(PH_PIN);
   float phValue = calculatePH(phAdcVoltage);
@@ -102,5 +157,23 @@ void loop() {
     Serial.println(" C");
   }
 
-  delay(500);
+  char payload[192];
+  const int payloadLength = snprintf(
+      payload,
+      sizeof(payload),
+      "{\"temperature\":%.2f,\"turbidity\":%.1f,\"ph\":%.2f}",
+      temperatureCelsius,
+      ntuValue,
+      phValue);
+
+  if (payloadLength > 0 &&
+      payloadLength < static_cast<int>(sizeof(payload)) &&
+      mqttClient.publish(MQTT_TOPIC, payload)) {
+    Serial.print("MQTT published: ");
+    Serial.println(payload);
+  } else {
+    Serial.println("MQTT publish failed");
+  }
+
+  lastPublishAt = millis();
 }
