@@ -56,12 +56,13 @@ float calculatePH(float adcVoltage) {
 }
 
 /**
- * Kalkulasi Nilai Kekeruhan/Turbidity (NTU)
+ * Kalkulasi persentase kekeruhan: 0% jernih, 100% paling keruh
  */
-float calculateNTU(float sensorVoltage) {
+float calculateTurbidityPercentage(float sensorVoltage) {
   if (sensorVoltage >= V_JERNIH_SENSOR) return 0.0f;
-  if (sensorVoltage <= V_KERUH_SENSOR) return 3000.0f;
-  return ((V_JERNIH_SENSOR - sensorVoltage) / (V_JERNIH_SENSOR - V_KERUH_SENSOR)) * 3000.0f;
+  if (sensorVoltage <= V_KERUH_SENSOR) return 100.0f;
+  return ((V_JERNIH_SENSOR - sensorVoltage) /
+          (V_JERNIH_SENSOR - V_KERUH_SENSOR)) * 100.0f;
 }
 
 void connectWiFi() {
@@ -135,7 +136,8 @@ void loop() {
   // 2. Pembacaan Sensor Turbidity
   float turbAdcVoltage = readStableADC(TURB_PIN);
   float estimatedTurbSensorVoltage = turbAdcVoltage * DIVIDER_CORRECTION;
-  float ntuValue = calculateNTU(estimatedTurbSensorVoltage);
+  float turbidityPercentage =
+      calculateTurbidityPercentage(estimatedTurbSensorVoltage);
 
   // 3. Pembacaan sensor suhu DS18B20
   temperatureSensor.requestTemperatures();
@@ -148,8 +150,8 @@ void loop() {
   Serial.print(" (ADC: ");
   Serial.print(phAdcVoltage, 3);
   Serial.print("V) | Turbidity: ");
-  Serial.print(ntuValue, 1);
-  Serial.print(" NTU (Est Sensor: ");
+  Serial.print(turbidityPercentage, 1);
+  Serial.print(" % (Est Sensor: ");
   Serial.print(estimatedTurbSensorVoltage, 3);
   Serial.print("V) | Temperature: ");
   if (temperatureCelsius == DEVICE_DISCONNECTED_C) {
@@ -165,7 +167,7 @@ void loop() {
       sizeof(payload),
       "{\"temperature\":%.2f,\"turbidity\":%.1f,\"ph\":%.2f}",
       temperatureCelsius,
-      ntuValue,
+      turbidityPercentage,
       phValue);
 
   if (payloadLength > 0 &&

@@ -5,11 +5,17 @@ import type { DatabaseDoc, ReadingDoc } from '../types.js'
 
 export const readingsRouter = Router()
 
-readingsRouter.get('/', async (_request, response) => {
-  const result = await database.allDocs({ include_docs: true, descending: true, limit: 100 })
+readingsRouter.get('/', async (request, response) => {
+  const requestedHours = Number(request.query.hours)
+  const hours = Number.isFinite(requestedHours) && requestedHours > 0
+    ? Math.min(requestedHours, 168)
+    : 168
+  const cutoff = Date.now() - hours * 60 * 60 * 1000
+  const result = await database.allDocs({ include_docs: true, descending: true, limit: 50000 })
   const readings = result.rows
     .map((row) => row.doc as DatabaseDoc)
     .filter((doc): doc is ReadingDoc => doc.type === 'reading')
+    .filter((reading) => Date.parse(reading.timestamp) >= cutoff)
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
   return response.json(readings)
 })

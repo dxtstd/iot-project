@@ -65,7 +65,7 @@ function App() {
           return
         }
 
-        const response = await fetch(`${API_URL}/readings`, { headers: { Authorization: `Bearer ${token}` } })
+        const response = await fetch(`${API_URL}/readings?hours=168`, { headers: { Authorization: `Bearer ${token}` } })
         if (response.ok) setReadings(await response.json())
         const settingsResponse = await fetch(`${API_URL}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
         if (settingsResponse.ok) setNotifications(await settingsResponse.json())
@@ -113,6 +113,14 @@ function App() {
     } finally {
       setSaving(false)
     }
+
+  }
+
+  async function changeTimeRange(hours: number) {
+    if (!token) return
+    const response = await fetch(`${API_URL}/readings?hours=${hours}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!response.ok) throw new Error('Gagal memuat histori sensor')
+    setReadings(await response.json())
   }
 
   const dashboardProps = {
@@ -125,6 +133,7 @@ function App() {
     onNotificationsChange: setNotifications,
     onToggleNotifications: () => void toggleNotifications(),
     onReadingsChange: setReadings,
+    onTimeRangeChange: changeTimeRange,
     onLogout: () => {
       localStorage.removeItem('iot-token')
       setToken(null)
