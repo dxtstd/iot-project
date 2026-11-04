@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { database } from '../database.js'
-import { resetSensorReadings, saveSensorReading } from '../services/readings.js'
+import { createZeroReading, resetSensorReadings, saveSensorReading } from '../services/readings.js'
 import type { DatabaseDoc, ReadingDoc } from '../types.js'
 
 export const readingsRouter = Router()
@@ -34,7 +34,7 @@ readingsRouter.get('/current', async (_request, response) => {
     .filter((doc): doc is ReadingDoc => doc.type === 'reading')
     .filter((reading) => Number.isFinite(Date.parse(reading.timestamp)))
     .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0]
-  if (!latestReading) return response.status(404).json({ error: 'Belum ada pembacaan sensor' })
+  if (!latestReading) return response.json(createZeroReading())
   return response.json(latestReading)
 })
 
@@ -83,7 +83,7 @@ readingsRouter.get('/range', async (request, response) => {
     }
   }
 
-  return response.json(aggregatedReadings)
+  return response.json(aggregatedReadings.length > 0 ? aggregatedReadings : [createZeroReading()])
 })
 
 readingsRouter.post('/', async (request, response) => {

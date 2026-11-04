@@ -9,6 +9,17 @@ export type SensorReadingInput = {
   timestamp?: unknown
 }
 
+export function createZeroReading(): ReadingDoc {
+  return {
+    _id: 'reading:empty',
+    type: 'reading',
+    timestamp: new Date().toISOString(),
+    temperature: 0,
+    turbidity: 0,
+    ph: 0,
+  }
+}
+
 export function parseSensorReading(input: SensorReadingInput): Omit<ReadingDoc, '_id' | 'type'> {
   const { temperature, turbidity, ph, timestamp } = input
   if (typeof temperature !== 'number' || typeof turbidity !== 'number' || typeof ph !== 'number' || ![temperature, turbidity, ph].every(Number.isFinite)) {
@@ -39,14 +50,5 @@ export async function resetSensorReadings() {
     .filter((doc): doc is ReadingDoc => doc?.type === 'reading')
   if (readings.length > 0) await database.bulkDocs(readings.map((reading) => ({ ...reading, _deleted: true })))
 
-  const resetReading: ReadingDoc = {
-    _id: `reading:${Date.now()}`,
-    type: 'reading',
-    timestamp: new Date().toISOString(),
-    temperature: 0,
-    turbidity: 0,
-    ph: 0,
-  }
-  await database.put(resetReading)
-  return resetReading
+  return createZeroReading()
 }
