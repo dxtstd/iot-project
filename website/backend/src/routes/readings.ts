@@ -65,14 +65,23 @@ readingsRouter.get('/range', async (request, response) => {
     buckets.set(bucketTimestamp, bucket)
   }
 
-  const aggregatedReadings = [...buckets.entries()].map(([timestamp, bucket]) => ({
-    _id: `reading:aggregate:${timestamp}`,
-    type: 'reading' as const,
-    timestamp: new Date(timestamp).toISOString(),
-    temperature: Number((bucket.temperature / bucket.count).toFixed(2)),
-    turbidity: Number((bucket.turbidity / bucket.count).toFixed(1)),
-    ph: Number((bucket.ph / bucket.count).toFixed(2)),
-  }))
+  const bucketTimestamps = [...buckets.keys()].sort((a, b) => a - b)
+  const aggregatedReadings = []
+  const firstTimestamp = bucketTimestamps[0]
+  const lastTimestamp = bucketTimestamps[bucketTimestamps.length - 1]
+  if (firstTimestamp !== undefined && lastTimestamp !== undefined) {
+    for (let timestamp = firstTimestamp; timestamp <= lastTimestamp; timestamp += bucketMilliseconds) {
+      const bucket = buckets.get(timestamp)
+      aggregatedReadings.push({
+        _id: `reading:aggregate:${timestamp}`,
+        type: 'reading' as const,
+        timestamp: new Date(timestamp).toISOString(),
+        temperature: bucket ? Number((bucket.temperature / bucket.count).toFixed(2)) : 0,
+        turbidity: bucket ? Number((bucket.turbidity / bucket.count).toFixed(1)) : 0,
+        ph: bucket ? Number((bucket.ph / bucket.count).toFixed(2)) : 0,
+      })
+    }
+  }
 
   return response.json(aggregatedReadings)
 })

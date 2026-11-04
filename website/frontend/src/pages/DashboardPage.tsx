@@ -31,7 +31,6 @@ const timeRanges = [
   { value: '6h', label: '6 jam', hours: 6 },
   { value: '12h', label: '12 jam', hours: 12 },
   { value: '24h', label: '24 jam', hours: 24 },
-  { value: '1d', label: '1 hari', hours: 24 },
   { value: '3d', label: '3 hari', hours: 72 },
   { value: '7d', label: '7 hari', hours: 168 },
 ] as const
