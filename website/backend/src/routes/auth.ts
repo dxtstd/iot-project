@@ -1,9 +1,21 @@
 import { Router } from 'express'
-import { createToken, verifyPassword } from '../auth.js'
+import { createToken, verifyPassword, verifyToken } from '../auth.js'
 import { database } from '../database.js'
 import type { UserDoc } from '../types.js'
 
 export const authRouter = Router()
+
+authRouter.get('/me', (request, response) => {
+  const header = request.header('authorization')
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
+  if (!token) return response.status(401).json({ error: 'Token diperlukan' })
+
+  try {
+    return response.json({ email: verifyToken(token) })
+  } catch {
+    return response.status(401).json({ error: 'Token tidak valid atau kedaluwarsa' })
+  }
+})
 
 authRouter.post('/login', async (request, response) => {
   const { email, password } = request.body as { email?: string; password?: string }
