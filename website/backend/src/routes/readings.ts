@@ -45,12 +45,13 @@ readingsRouter.get('/', async (request, response) => {
     _id: `reading:aggregate:${timestamp}`,
     type: 'reading' as const,
     timestamp: new Date(timestamp).toISOString(),
-    temperature: bucket.temperature / bucket.count,
-    turbidity: bucket.turbidity / bucket.count,
-    ph: bucket.ph / bucket.count,
+    temperature: Number((bucket.temperature / bucket.count).toFixed(2)),
+    turbidity: Number((bucket.turbidity / bucket.count).toFixed(1)),
+    ph: Number((bucket.ph / bucket.count).toFixed(2)),
   }))
 
-  return response.json(aggregatedReadings)
+  const latestReading = readings[readings.length - 1]
+  return response.json(latestReading ? [...aggregatedReadings, latestReading] : aggregatedReadings)
 })
 
 readingsRouter.post('/', async (request, response) => {
