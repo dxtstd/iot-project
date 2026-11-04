@@ -1,16 +1,8 @@
 import { database } from '../database.js'
-import { hashPassword } from '../auth.js'
 import type { DatabaseDoc } from '../types.js'
 import { config } from '../config.js'
 
 export async function ensureSeedData() {
-  try {
-    await database.get('user:admin')
-  } catch (error) {
-    if ((error as { status?: number }).status !== 404) throw error
-    await database.put({ _id: 'user:admin', type: 'user', email: 'admin@example.com', passwordHash: hashPassword('admin123') })
-  }
-
   try {
     await database.get('settings:notifications')
   } catch (error) {

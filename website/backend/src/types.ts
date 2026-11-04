@@ -24,4 +24,4 @@ export type SettingsDoc = {
 }
 
 export type DatabaseDoc = UserDoc | ReadingDoc | SettingsDoc
-export type AuthRequest = Request & { userEmail?: string }
+export type AuthRequest = Request & { userUsername?: string }

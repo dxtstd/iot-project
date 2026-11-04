@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 #include <OneWire.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 
 #include "secrets.h"
 
@@ -14,7 +15,7 @@ constexpr unsigned long MQTT_INTERVAL_MS = 30000;
 
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature temperatureSensor(&oneWire);
-WiFiClient wifiClient;
+WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
 unsigned long lastPublishAt = 0;
 
@@ -103,6 +104,7 @@ void setup() {
   pinMode(TURB_PIN, INPUT);
   temperatureSensor.begin();
 
+  wifiClient.setInsecure();
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
   connectWiFi();
   connectMQTT();

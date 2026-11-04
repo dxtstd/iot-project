@@ -19,6 +19,8 @@ services:
     environment:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-change-this-development-secret}
+      AUTH_USERNAME: ${AUTH_USERNAME:-}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-}
       POUCHDB_PATH: /app/data/lobster-farm-monitor
       SENSOR_MODE: ${SENSOR_MODE:-dummy}
       MQTT_URL: ${MQTT_URL:-mqtt://mqtt:1883}

@@ -1,6 +1,8 @@
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   jwtSecret: process.env.JWT_SECRET ?? 'change-this-development-secret',
+  authUsername: process.env.AUTH_USERNAME ?? '',
+  authPassword: process.env.AUTH_PASSWORD ?? '',
   pouchDbPath: process.env.POUCHDB_PATH ?? './data/lobster-farm-monitor',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
   sensorMode: process.env.SENSOR_MODE === 'mqtt' ? 'mqtt' as const : 'dummy' as const,

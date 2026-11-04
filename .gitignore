@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.*
+!website/backend/.env.example
 dist/
 build/
 *.lock

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ComponentProps } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import './App.css'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 
@@ -30,11 +29,11 @@ const sampleReadings: SensorReading[] = [
   { timestamp: '2026-09-13', temperature: 45, turbidity: 44, ph: 8.5 },
 ]
 
-function LoginRoute({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
+function LoginRoute({ onLogin }: { onLogin: (username: string, password: string) => Promise<void> }) {
   const navigate = useNavigate()
 
-  async function login(email: string, password: string) {
-    await onLogin(email, password)
+  async function login(username: string, password: string) {
+    await onLogin(username, password)
     navigate('/dashboard', { replace: true })
   }
 
@@ -83,14 +82,14 @@ function App() {
     return abnormal ? 'Perlu perhatian' : 'Ideal'
   }, [latest])
 
-  async function login(email: string, password: string) {
+  async function login(username: string, password: string) {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       })
-      if (!response.ok) throw new Error('Email atau password salah')
+      if (!response.ok) throw new Error('Username atau password salah')
       const result = await response.json()
       localStorage.setItem('iot-token', result.token)
       setToken(result.token)
@@ -133,7 +132,7 @@ function App() {
     },
   }
 
-  if (checkingToken) return <main className="login-page min-h-screen px-4" aria-busy="true" />
+  if (checkingToken) return <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_20%_20%,#e2faf7,transparent_35%),#f6fafb] px-4 font-['DM_Sans',sans-serif] text-[#172b3a]" aria-busy="true" />
 
   return (
     <BrowserRouter>

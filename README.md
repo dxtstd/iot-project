@@ -22,12 +22,14 @@ npm run backend
 npm run frontend
 ```
 
-Login demo: `admin@example.com` / `admin123`.
+Login menggunakan `AUTH_USERNAME` dan `AUTH_PASSWORD` dari environment backend.
 
 API menggunakan `./data/lobster-farm-monitor` sebagai database PouchDB lokal. Salin konfigurasi berikut ke environment backend jika Telegram ingin diaktifkan:
 
 ```env
 JWT_SECRET=replace-with-a-long-random-secret
+AUTH_USERNAME=admin
+AUTH_PASSWORD=replace-with-a-strong-password
 TELEGRAM_BOT_TOKEN=your-bot-token
 PORT=3000
 SENSOR_MODE=dummy

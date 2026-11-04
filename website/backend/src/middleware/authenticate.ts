@@ -7,7 +7,7 @@ export function authenticate(request: AuthRequest, response: Response, next: Nex
   const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
   if (!token) return response.status(401).json({ error: 'Token diperlukan' })
   try {
-    request.userEmail = verifyToken(token)
+    request.userUsername = verifyToken(token)
     return next()
   } catch {
     return response.status(401).json({ error: 'Token tidak valid atau kedaluwarsa' })
