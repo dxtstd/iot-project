@@ -14,7 +14,31 @@ function getBucketMilliseconds(hours: number) {
   return 6 * 60 * 60 * 1000
 }
 
-readingsRouter.get('/', async (request, response) => {
+readingsRouter.get('/status', async (_request, response) => {
+  const result = await database.allDocs({ include_docs: true, limit: 50000 })
+  const latestReading = result.rows
+    .map((row) => row.doc as DatabaseDoc)
+    .filter((doc): doc is ReadingDoc => doc.type === 'reading')
+    .filter((reading) => Number.isFinite(Date.parse(reading.timestamp)))
+    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0]
+  const lastSeen = latestReading?.timestamp
+  const ageSeconds = lastSeen ? Math.max(0, Math.floor((Date.now() - Date.parse(lastSeen)) / 1000)) : null
+  const connected = ageSeconds !== null && ageSeconds <= 90
+  return response.json({ connected, lastSeen: lastSeen ?? null, ageSeconds })
+})
+
+readingsRouter.get('/current', async (_request, response) => {
+  const result = await database.allDocs({ include_docs: true, limit: 50000 })
+  const latestReading = result.rows
+    .map((row) => row.doc as DatabaseDoc)
+    .filter((doc): doc is ReadingDoc => doc.type === 'reading')
+    .filter((reading) => Number.isFinite(Date.parse(reading.timestamp)))
+    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0]
+  if (!latestReading) return response.status(404).json({ error: 'Belum ada pembacaan sensor' })
+  return response.json(latestReading)
+})
+
+readingsRouter.get('/range', async (request, response) => {
   const requestedHours = Number(request.query.hours)
   const hours = Number.isFinite(requestedHours) && requestedHours > 0
     ? Math.min(requestedHours, 168)
@@ -50,8 +74,7 @@ readingsRouter.get('/', async (request, response) => {
     ph: Number((bucket.ph / bucket.count).toFixed(2)),
   }))
 
-  const latestReading = readings[readings.length - 1]
-  return response.json(latestReading ? [...aggregatedReadings, latestReading] : aggregatedReadings)
+  return response.json(aggregatedReadings)
 })
 
 readingsRouter.post('/', async (request, response) => {

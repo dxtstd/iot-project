@@ -17,6 +17,12 @@ export type NotificationSettings = {
   chatId: string
 }
 
+export type DeviceStatus = {
+  connected: boolean
+  lastSeen: string | null
+  ageSeconds: number | null
+}
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api'
 
 const sampleReadings: SensorReading[] = [
@@ -48,6 +54,9 @@ function App() {
   const [token, setToken] = useState(() => localStorage.getItem('iot-token'))
   const [checkingToken, setCheckingToken] = useState(Boolean(token))
   const [readings, setReadings] = useState(sampleReadings)
+  const [latestReading, setLatestReading] = useState(sampleReadings[sampleReadings.length - 1])
+  const [readingHours, setReadingHours] = useState(168)
+  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>({ connected: false, lastSeen: null, ageSeconds: null })
   const [notifications, setNotifications] = useState<NotificationSettings>({ enabled: false, chatId: '' })
   const [showSettings, setShowSettings] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -65,8 +74,6 @@ function App() {
           return
         }
 
-        const response = await fetch(`${API_URL}/readings?hours=168`, { headers: { Authorization: `Bearer ${token}` } })
-        if (response.ok) setReadings(await response.json())
         const settingsResponse = await fetch(`${API_URL}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
         if (settingsResponse.ok) setNotifications(await settingsResponse.json())
         setCheckingToken(false)
@@ -76,6 +83,33 @@ function App() {
     }
     void load()
   }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    let active = true
+    const refresh = async () => {
+      const headers = { Authorization: `Bearer ${token}` }
+      const [readingsResponse, currentResponse, statusResponse] = await Promise.all([
+        fetch(`${API_URL}/readings/range?hours=${readingHours}`, { headers }),
+        fetch(`${API_URL}/readings/current`, { headers }),
+        fetch(`${API_URL}/readings/status`, { headers }),
+      ])
+      if (!readingsResponse.ok || !currentResponse.ok || !statusResponse.ok) throw new Error('Gagal memperbarui data sensor')
+      if (active) {
+        setReadings(await readingsResponse.json())
+        setLatestReading(await currentResponse.json())
+        setDeviceStatus(await statusResponse.json())
+      }
+    }
+    void refresh().catch((error: unknown) => console.error(error))
+    const interval = window.setInterval(() => {
+      void refresh().catch((error: unknown) => console.error(error))
+    }, 30000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [token, readingHours])
 
   const status = useMemo(() => {
     const abnormal = latest.temperature > 35 || latest.turbidity > 40 || latest.ph < 6.5 || latest.ph > 8.5
@@ -118,7 +152,8 @@ function App() {
 
   async function changeTimeRange(hours: number) {
     if (!token) return
-    const response = await fetch(`${API_URL}/readings?hours=${hours}`, { headers: { Authorization: `Bearer ${token}` } })
+    setReadingHours(hours)
+    const response = await fetch(`${API_URL}/readings/range?hours=${hours}`, { headers: { Authorization: `Bearer ${token}` } })
     if (!response.ok) throw new Error('Gagal memuat histori sensor')
     setReadings(await response.json())
   }
@@ -133,7 +168,9 @@ function App() {
     onNotificationsChange: setNotifications,
     onToggleNotifications: () => void toggleNotifications(),
     onReadingsChange: setReadings,
+    latestReading,
     onTimeRangeChange: changeTimeRange,
+    deviceStatus,
     onLogout: () => {
       localStorage.removeItem('iot-token')
       setToken(null)
