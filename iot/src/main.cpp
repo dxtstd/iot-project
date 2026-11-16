@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <DallasTemperature.h>
+#include <ESP32Servo.h>
 #include <PubSubClient.h>
 #include <OneWire.h>
 #include <WiFi.h>
@@ -11,10 +12,21 @@
 constexpr uint8_t PH_PIN = 34;
 constexpr uint8_t TURB_PIN = 35;
 constexpr uint8_t DS18B20_PIN = 27;
+constexpr uint8_t SERVO_PIN = 25;
 constexpr unsigned long MQTT_INTERVAL_MS = 30000;
+constexpr unsigned long WIFI_TIMEOUT_MS = 10000;
+
+const char* const WIFI_SSIDS[] = {
+    WIFI_SSID,
+    WIFI_BACKUP_SSID_1,
+    WIFI_BACKUP_SSID_2,
+};
+constexpr size_t WIFI_NETWORK_COUNT =
+    sizeof(WIFI_SSIDS) / sizeof(WIFI_SSIDS[0]);
 
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature temperatureSensor(&oneWire);
+Servo servo;
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
 unsigned long lastPublishAt = 0;
@@ -66,12 +78,32 @@ float calculateTurbidityPercentage(float sensorVoltage) {
 }
 
 void connectWiFi() {
-  Serial.print("Connecting to Wi-Fi");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+    for (size_t networkIndex = 0;
+         networkIndex < WIFI_NETWORK_COUNT &&
+         WiFi.status() != WL_CONNECTED;
+         ++networkIndex) {
+      Serial.print("Connecting to Wi-Fi: ");
+      Serial.println(WIFI_SSIDS[networkIndex]);
+      WiFi.begin(WIFI_SSIDS[networkIndex], WIFI_PASSWORD);
+
+      const unsigned long attemptStartedAt = millis();
+      while (WiFi.status() != WL_CONNECTED &&
+             millis() - attemptStartedAt < WIFI_TIMEOUT_MS) {
+        delay(500);
+        Serial.print(".");
+      }
+
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("\nSSID unavailable, trying next network.");
+        WiFi.disconnect();
+      }
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("All Wi-Fi networks failed, retrying in 5 seconds.");
+      delay(5000);
+    }
   }
 
   Serial.println();
@@ -104,6 +136,14 @@ void setup() {
   pinMode(PH_PIN, INPUT);
   pinMode(TURB_PIN, INPUT);
   temperatureSensor.begin();
+
+  servo.attach(SERVO_PIN);
+  servo.write(0);
+  delay(1000);
+  servo.write(45);
+  delay(1000);
+  servo.write(0);
+  Serial.println("SG90 bergerak dari 0 ke 45 derajat pada GPIO 25");
 
   wifiClient.setInsecure();
   mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
