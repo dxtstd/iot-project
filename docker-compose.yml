@@ -41,6 +41,7 @@ services:
     image: eclipse-mosquitto:2
     ports:
       - "${MQTT_PORT:-1883}:1883"
+      - "${WSS_PORT:-8884}:9001"
     volumes:
       - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./docker/mosquitto.password:/mosquitto/config/passwordfile:ro
