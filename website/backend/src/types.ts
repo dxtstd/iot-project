@@ -14,6 +14,7 @@ export type ReadingDoc = {
   temperature: number
   turbidity: number
   ph: number
+  deviceId?: string
 }
 
 export type SettingsDoc = {

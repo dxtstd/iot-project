@@ -7,7 +7,10 @@ export const config = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
   sensorMode: process.env.SENSOR_MODE === 'mqtt' ? 'mqtt' as const : 'dummy' as const,
   mqttUrl: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
-  mqttTopic: process.env.MQTT_TOPIC ?? 'lobster-farm/sensors',
+  mqttBackupUrl: process.env.MQTT_BACKUP_URL ?? 'mqtt://local.dxtstd.my.id:1883',
+  mqttDeviceId: process.env.MQTT_DEVICE_ID ?? 'device-1',
+  mqttSensorTopic: process.env.MQTT_SENSOR_TOPIC ?? 'lobster-farm/device-1/sensor-data',
+  mqttCommandTopic: process.env.MQTT_COMMAND_TOPIC ?? 'lobster-farm/device-1/command',
   mqttUsername: process.env.MQTT_USERNAME,
   mqttPassword: process.env.MQTT_PASSWORD,
 }

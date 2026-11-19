@@ -3,6 +3,7 @@ import { sendTelegramAlert } from './telegram.js'
 import type { ReadingDoc } from '../types.js'
 
 export type SensorReadingInput = {
+  deviceId?: unknown
   temperature?: unknown
   turbidity?: unknown
   ph?: unknown
@@ -25,12 +26,14 @@ export function parseSensorReading(input: SensorReadingInput): Omit<ReadingDoc, 
   if (typeof temperature !== 'number' || typeof turbidity !== 'number' || typeof ph !== 'number' || ![temperature, turbidity, ph].every(Number.isFinite)) {
     throw new Error('Nilai sensor harus berupa angka')
   }
-  return {
+  const values = {
     timestamp: typeof timestamp === 'string' ? timestamp : new Date().toISOString(),
     temperature,
     turbidity,
     ph,
   }
+  if (typeof input.deviceId === 'string') return { ...values, deviceId: input.deviceId }
+  return values
 }
 
 export async function saveSensorReading(input: SensorReadingInput) {

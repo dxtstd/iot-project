@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import { database } from '../database.js'
 import type { DatabaseDoc, FeedingScheduleDoc } from '../types.js'
+import { config } from '../config.js'
+import { publishFeedingCommand } from '../services/mqtt.js'
 
 export const feedingSchedulesRouter = Router()
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -64,6 +66,18 @@ feedingSchedulesRouter.delete('/:id', async (request, response) => {
     return response.status(204).send()
   } catch (error) {
     if ((error as { status?: number }).status === 404) return response.status(404).json({ error: 'Jadwal tidak ditemukan' })
+    throw error
+  }
+})
+
+feedingSchedulesRouter.post('/feed', async (_request, response) => {
+  try {
+    publishFeedingCommand(config.mqttDeviceId)
+    return response.status(202).json({ deviceId: config.mqttDeviceId, action: 'feed', durationMs: 1000 })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'MQTT belum terhubung') {
+      return response.status(503).json({ error: error.message })
+    }
     throw error
   }
 })

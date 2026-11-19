@@ -30,6 +30,9 @@ Servo servo;
 WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
 unsigned long lastPublishAt = 0;
+unsigned long servoDetachAt = 0;
+bool servoActive = false;
+size_t mqttServerIndex = 0;
 
 // --- Spesifikasi ADC & Filter ---
 constexpr float ADC_REF_VOLTAGE = 3.3f;
@@ -109,20 +112,60 @@ void connectWiFi() {
   Serial.println();
   Serial.print("Wi-Fi connected, IP: ");
   Serial.println(WiFi.localIP());
+  WiFi.enableIpV6();
+  Serial.print("Wi-Fi global/local IPv6: ");
+  Serial.println(WiFi.localIPv6());
 }
 
 void connectMQTT() {
+  static const char* MQTT_SERVERS[] = { MQTT_SERVER, MQTT_BACKUP_SERVER };
+  static const uint16_t MQTT_PORTS[] = { MQTT_PORT, MQTT_BACKUP_PORT };
+
   while (!mqttClient.connected()) {
-    Serial.print("Connecting to MQTT...");
-    if (mqttClient.connect("esp32-sensor", MQTT_USERNAME, MQTT_PASSWORD)) {
+    Serial.print("Connecting to MQTT ");
+    Serial.print(MQTT_SERVERS[mqttServerIndex]);
+    Serial.print("...");
+    mqttClient.setServer(MQTT_SERVERS[mqttServerIndex], MQTT_PORTS[mqttServerIndex]);
+    if (mqttClient.connect(DEVICE_ID, MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println("connected");
+      mqttClient.subscribe(MQTT_COMMAND_TOPIC);
     } else {
       Serial.print("failed, state=");
       Serial.print(mqttClient.state());
-      Serial.println(", retrying in 5 seconds");
+      mqttServerIndex = (mqttServerIndex + 1) % 2;
+      Serial.print(", trying backup in 5 seconds: ");
+      Serial.println(MQTT_SERVERS[mqttServerIndex]);
       delay(5000);
     }
   }
+}
+
+void handleCommand(char* topic, byte* payload, unsigned int length) {
+  if (strcmp(topic, MQTT_COMMAND_TOPIC) != 0) return;
+
+  char command[128];
+  const size_t copyLength = min(static_cast<size_t>(length), sizeof(command) - 1);
+  memcpy(command, payload, copyLength);
+  command[copyLength] = '\0';
+
+  if (strstr(command, "\"action\":\"feed\"") == nullptr) {
+    Serial.println("Unknown MQTT command");
+    return;
+  }
+
+  int durationMs = 1000;
+  const char* duration = strstr(command, "\"durationMs\":");
+  if (duration != nullptr) {
+    durationMs = atoi(duration + 13);
+  }
+  durationMs = constrain(durationMs, 100, 10000);
+
+  servo.write(45);
+  servoActive = true;
+  servoDetachAt = millis() + static_cast<unsigned long>(durationMs);
+  Serial.print("Feeding command received for ");
+  Serial.print(durationMs);
+  Serial.println(" ms");
 }
 
 void setup() {
@@ -146,7 +189,7 @@ void setup() {
   Serial.println("SG90 bergerak dari 0 ke 45 derajat pada GPIO 25");
 
   wifiClient.setInsecure();
-  mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  mqttClient.setCallback(handleCommand);
   connectWiFi();
   connectMQTT();
 
@@ -162,6 +205,10 @@ void loop() {
     connectMQTT();
   }
   mqttClient.loop();
+  if (servoActive && millis() >= servoDetachAt) {
+    servo.write(0);
+    servoActive = false;
+  }
 
   if (lastPublishAt != 0 &&
       millis() - lastPublishAt < MQTT_INTERVAL_MS) {
@@ -205,14 +252,15 @@ void loop() {
   const int payloadLength = snprintf(
       payload,
       sizeof(payload),
-      "{\"temperature\":%.2f,\"turbidity\":%.1f,\"ph\":%.2f}",
+      "{\"deviceId\":\"%s\",\"temperature\":%.2f,\"turbidity\":%.1f,\"ph\":%.2f}",
+      DEVICE_ID,
       temperatureCelsius,
       turbidityPercentage,
       phValue);
 
   if (payloadLength > 0 &&
       payloadLength < static_cast<int>(sizeof(payload)) &&
-      mqttClient.publish(MQTT_TOPIC, payload)) {
+      mqttClient.publish(MQTT_SENSOR_TOPIC, payload)) {
     Serial.print("MQTT published: ");
     Serial.println(payload);
   } else {

@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 
 export type SensorReading = {
   _id?: string
+  deviceId?: string
   timestamp: string
   temperature: number
   turbidity: number
@@ -214,6 +215,15 @@ function App() {
     setFeedingSchedules((current) => current.filter((item) => item._id !== id))
   }
 
+  async function feedNow() {
+    if (!token) return
+    const response = await fetch(`${API_URL}/feeding-schedules/feed`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error((await response.json() as { error?: string }).error ?? 'Gagal mengirim perintah pakan')
+  }
+
   const dashboardProps = {
     readings,
     notifications,
@@ -231,6 +241,7 @@ function App() {
     onAddFeedingSchedule: addFeedingSchedule,
     onUpdateFeedingSchedule: updateFeedingSchedule,
     onDeleteFeedingSchedule: deleteFeedingSchedule,
+    onFeedNow: feedNow,
     deviceStatus,
     onLogout: () => {
       localStorage.removeItem('iot-token')
